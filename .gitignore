@@ -1,0 +1,10 @@
+node_modules/
+
+# Runtime data — the database, the access code, and files mid-upload.
+# Never commit real business data or the access code to a shared repo.
+data/
+
+# Rollback copy of the pre-single-file version — local reference only.
+_pre-single-file-backup/
+
+*.log

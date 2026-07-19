@@ -1,0 +1,20 @@
+{
+  "name": "lrs-analytics-dashboard",
+  "version": "1.0.0",
+  "description": "Social media analytics reporting system for Ligon-Razon Solutions. Upload weekly CSV/Excel exports, get automatic validation, dedup, merge/replace, and a Chart.js dashboard across Facebook, Instagram, LinkedIn, Threads, TikTok, YouTube.",
+  "private": true,
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.6",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "multer": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
