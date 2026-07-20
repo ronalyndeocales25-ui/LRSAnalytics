@@ -23,7 +23,25 @@ environment variable.
 
 Data is stored in `data/lrs.db` (a single SQLite file — back it up like any
 other file). Uploaded files are held in `data/uploads/` only long enough to
-be parsed, then deleted.
+be parsed, then deleted. The whole `data/` directory's location can be
+overridden with the `DATA_DIR` environment variable (e.g. `DATA_DIR=/data`)
+— needed when deploying somewhere the app's own folder is rebuilt fresh on
+every deploy and only a separately mounted volume persists (see
+**Deploying**, below).
+
+### Backup & restore
+
+The **Upload History** tab has a **Backup & Restore** card:
+
+- **Download Backup** grabs a complete, self-contained snapshot of
+  `data/lrs.db` (any pending writes are flushed first) as a timestamped
+  `.db` file.
+- **Restore from Backup** uploads a previously downloaded `.db` file and
+  replaces the live database with it. This is destructive — a confirmation
+  is required — and the server restarts itself afterward (SQLite is opened
+  once at startup, so a hot-swap isn't possible; restart `npm start` again,
+  or your process manager brings it back automatically, and it comes up
+  reading the restored file).
 
 ### Access code
 
@@ -255,6 +273,42 @@ duplicate-resolution path, and prints the resulting KPIs — useful after
 changing the parser, import, or auth logic. It writes real rows into
 `data/lrs.db`; delete that file (and its `-shm`/`-wal` siblings) afterward if
 you want to start from a clean database again.
+
+## Deploying
+
+This is a plain Node.js server with a local SQLite file — it needs a host
+with **persistent disk**, not a serverless/edge platform (Vercel, Netlify,
+Cloudflare Workers, etc. won't work; there's nowhere for `data/lrs.db` to
+live between requests).
+
+Any of these work well: [Railway](https://railway.app),
+[Render](https://render.com), [Fly.io](https://fly.io), or your own VPS.
+The general shape, using Railway as the example:
+
+1. Push this repo to GitHub (already done if you're reading this from
+   there).
+2. On Railway: **New Project → Deploy from GitHub repo** → select this
+   repo. It detects Node.js automatically and runs `npm install` + `npm
+   start` — no extra config needed for the app itself.
+3. **Add a Volume** and mount it (e.g. at `/data`), then set the
+   **`DATA_DIR`** environment variable to that same path (e.g. `/data`).
+   Without this step, every redeploy silently wipes the database — the
+   app's own directory is rebuilt from git each time, and only a mounted
+   volume survives across deploys.
+4. Once it's deployed, open the generated public URL, sign in with the
+   default access code (`LRS2026`), and **change it immediately** —
+   either via Railway's built-in shell (`cat > /data/access-code.txt`) or
+   by downloading a backup, editing `access-code.txt` isn't inside the
+   `.db` file so that specific edit still needs the shell/volume, not the
+   Backup/Restore feature.
+5. Take a backup (Upload History → Download Backup) right after your first
+   real upload, and periodically after — see **Backup & restore** above.
+
+**Before making it public**, know that the whole app sits behind one
+shared password with no rate-limiting on login attempts and the session
+cookie isn't marked `Secure` yet. Fine for a small trusted audience or a
+URL that isn't advertised; if you want it hardened further (login
+throttling, `Secure`/HTTPS-only cookies), ask and it can be added.
 
 ## Known limitations
 
