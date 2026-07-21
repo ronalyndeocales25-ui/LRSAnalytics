@@ -137,18 +137,34 @@ records never require a decision either; they're imported automatically too.
   whatever the selected platform's data actually contains (via
   `/api/analytics/metric-options`) — never a hardcoded per-platform list, so
   a metric only appears once a real column for it has been imported.
-  Everything below the selectors — five KPI cards (Highest/Average/Total/
-  Number of Posts/Best Performing Post — the last one lists **every** post
-  tied for the top value, not just one, and there's no Lowest Performing
-  Post card), the weekly trend chart, a Platform Comparison chart (Campaign
-  Performance instead, once a single platform is selected — since comparing
-  one platform to itself isn't useful), a Content Type Performance chart,
-  and the Top Performing Posts ranking (every caption is a clickable link
-  straight to the original post when a posting link was imported for it,
-  opening in a new tab, alongside the **View Details** button which opens
-  the same full-record popup as Data Records) — recomputes for the selected
-  platform + metric + date range + campaign + content type. Every bar,
-  line, and pie chart shows its actual values directly on the chart (via
+  Above the KPI cards sits a **Platform Summary Bar** — a horizontally
+  scrollable strip with one card per platform that has any data, showing
+  Followers/Posts/Views/Reach/Engagement at a glance; it narrows to a single
+  card when the shared Platform filter is set to one platform, and refreshes
+  on the same filter-change cycle as everything else on the tab, no reload.
+  The KPI grid itself has eight cards: the original five
+  (Highest/Average/Total/Number of Posts/Best Performing Post — the last
+  one lists **every** post tied for the top value, not just one, and there's
+  no Lowest Performing Post card; it also gets a "Current Followers" footer
+  line for the selected platform), plus three sourced from Followers Data
+  Record: **Current Followers** (each platform's latest logged count, summed
+  across platforms when "All Platforms" is selected), **Followers Growth**
+  (latest entry vs. the one before it — absolute difference and %, green for
+  up / red for down), and **New Followers** (followers gained specifically
+  within the currently-selected date range, comparing against the last known
+  count before that range so a short range like "Last 7 days" still shows a
+  real number instead of nothing; shows "No follower update" when there's
+  truly nothing to compare). All eight numbers animate in with a brief
+  count-up rather than snapping straight to their final value. Below that:
+  the weekly trend chart, a Platform Comparison chart (Campaign Performance
+  instead, once a single platform is selected — since comparing one platform
+  to itself isn't useful), a Content Type Performance chart, and the Top
+  Performing Posts ranking (every caption is a clickable link straight to
+  the original post when a posting link was imported for it, opening in a
+  new tab, alongside the **View Details** button which opens the same
+  full-record popup as Data Records) — recomputes for the selected platform
+  + metric + date range + campaign + content type. Every bar, line, and pie
+  chart shows its actual values directly on the chart (via
   `chartjs-plugin-datalabels`), not just on hover, formatted the way a
   presentation deck would (`850`, `1,250`, `12.5K`, `156K`, `1.25M`) —
   point/bar labels are skipped only when a chart has enough items that
@@ -186,15 +202,20 @@ records never require a decision either; they're imported automatically too.
     instant since it re-orders whatever page of rows is already loaded, with
     no round-trip to the server. The Date column always renders on a single
     line (e.g. `Jul 20, 2026`), never wrapping onto a second line.
+  - **Export CSV** / **Export Excel** buttons export the complete filtered
+    and searched result set (every matching record, not just the current
+    page) via a dedicated backend route.
 - **Followers Data Record** — a separate tab for manually logging each
   platform's total follower count once a week (Platform, Week/Date,
   Followers Count), entirely independent of the spreadsheet Upload system —
   it has its own database table, its own API, and doesn't touch or require
   any uploaded post data. Re-entering the same platform + week updates that
   entry in place rather than creating a duplicate. This is what powers
-  follower-growth figures on the Comparisons page; upload data alone never
-  produces a follower-growth number since per-post "Followers Gained" and a
-  platform's actual running total are different things.
+  follower-growth figures on the Dashboard and Comparisons pages; upload
+  data alone never produces a follower-growth number since per-post
+  "Followers Gained" and a platform's actual running total are different
+  things. Has its own search box (platform/date/count), pagination, sortable
+  columns, and Export CSV/Excel over whatever's currently filtered.
 - **Comparisons** — two views:
   - **All Platforms** (the default view) — a single report covering every
     platform that has any data (uploaded posts and/or Followers Data Record
@@ -209,13 +230,45 @@ records never require a decision either; they're imported automatically too.
     one it simply reports on the full span of data on file. This view
     deliberately ignores the shared Platform/Campaign/Content-type filter
     bar, since the whole point is to compare across everything at once.
-  - The original tools remain unchanged: **Week vs. Week**, a fully custom
-    date-range vs. date-range, **Monthly** (vs. previous month or vs. the
-    same month last year), **Quarterly**, and **Year-to-Date** — each
-    showing per-metric growth % and a platform-by-platform comparison
-    chart, still respecting the shared filter bar as before.
+  - **Week vs. Week**, a fully custom date-range vs. date-range,
+    **Monthly** (vs. previous month or vs. the same month last year),
+    **Quarterly**, and **Year-to-Date** — each still shows the original
+    per-metric growth % stat-tile grid, respecting the shared filter bar as
+    before. Below that grid, a **Platform Performance Comparison** section
+    renders one card per platform with data in either range (including
+    **X**, alongside Facebook/Instagram/TikTok/LinkedIn/Threads/YouTube):
+    an overall % change badge (green/red/gray), a metric-by-metric list
+    (Posts/Views/Reach/Impressions/Engagement/Clicks/Comments/Shares/
+    Saves/Watch Time/Followers Gained — metrics that are zero in both
+    ranges are hidden) with an animated paired bar per metric, and an
+    Overall Result footer naming the best and weakest metric. A **Sort By**
+    dropdown (Overall Performance/Highest Growth/Highest Engagement/Most
+    Followers/Most Posts/Alphabetical) and a quick per-platform filter both
+    reorder/narrow the already-loaded cards with no new fetch; a "View Full
+    Comparison" link opens the complete metric table in a modal. Shows "No
+    data available for the selected date ranges." instead of an empty grid
+    when neither range has anything. (This replaces the old single grouped
+    "Range A vs Range B by Platform" bar chart, which showed less detail
+    and didn't scale well past a handful of platforms.)
 - **Upload History** — every past import with its status, row counts, any
   note left at import time, and a per-row error/skip log you can expand.
+  Has a search box (filename/status/notes), sortable columns, pagination,
+  and Export CSV/Excel, same as the other two tables.
+
+### Table exports (Data Records / Followers Data / Upload History)
+
+All three tables can export **CSV** or **Excel (.xlsx)**. Data Records is
+server-paginated/searched, so its export hits a dedicated backend route
+(`GET /api/records/export`) that reuses the exact same filter-building logic
+as the list endpoint — it always exports the complete matching dataset, not
+just whatever page happens to be on screen. Followers Data and Upload
+History load their full dataset into the browser once and search/sort it
+client-side, so their exports work the same way: CSV is generated entirely
+in-browser (no server round-trip, no library needed), while Excel is
+generated by a small generic backend endpoint (`POST /api/export`) that
+accepts the already-filtered rows and reuses `exceljs` — already a
+dependency for reading uploaded spreadsheets — so no new npm package was
+needed for either export format anywhere in the app.
 
 ## Project layout
 
