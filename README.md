@@ -137,12 +137,7 @@ records never require a decision either; they're imported automatically too.
   whatever the selected platform's data actually contains (via
   `/api/analytics/metric-options`) — never a hardcoded per-platform list, so
   a metric only appears once a real column for it has been imported.
-  Above the KPI cards sits a **Platform Summary Bar** — a horizontally
-  scrollable strip with one card per platform that has any data, showing
-  Followers/Posts/Views/Reach/Engagement at a glance; it narrows to a single
-  card when the shared Platform filter is set to one platform, and refreshes
-  on the same filter-change cycle as everything else on the tab, no reload.
-  The KPI grid itself has eight cards: the original five
+  The KPI grid has eight cards: the original five
   (Highest/Average/Total/Number of Posts/Best Performing Post — the last
   one lists **every** post tied for the top value, not just one, and there's
   no Lowest Performing Post card; it also gets a "Current Followers" footer
