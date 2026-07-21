@@ -270,6 +270,20 @@ it). The frontend's own internal logic is still organized into the same
 sections it always was (Api, State/Format/Toast, Charts, Dashboard,
 Comparison, Records, Upload/History, app bootstrap).
 
+### Branding
+
+The logo is embedded once, as a base64 data URI defined by a single
+`LOGO_DATA_URI` constant near the top of the frontend's inline `<script>`,
+and wired onto every `<img class="brand-logo">` (the login screen and the
+topbar) plus the favicon `<link>` by `applyBranding()` at startup — so the
+image data itself appears exactly once in the file no matter how many places
+display it. To swap the logo, re-run the same base64-encode step used to
+embed it (`Buffer.from(fs.readFileSync('new-logo.png')).toString('base64')`)
+and replace the string assigned to `LOGO_DATA_URI` in the extracted frontend
+HTML (see **Project layout**, above, for the extract/re-embed workflow), then
+re-embed. `.brand-logo` is sized by height only (`width: auto`), so any
+image swapped in keeps its own aspect ratio automatically.
+
 ### Look and feel
 
 The UI follows a glassmorphism design language — semi-transparent, blurred
