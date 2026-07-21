@@ -136,23 +136,24 @@ records never require a decision either; they're imported automatically too.
   to the shared **Platform** filter; its options are read live from
   whatever the selected platform's data actually contains (via
   `/api/analytics/metric-options`) — never a hardcoded per-platform list, so
-  a metric only appears once a real column for it has been imported. It
-  also offers one derived metric, **Engagement Rate** (engagement ÷ reach,
-  or ÷ impressions where reach isn't tracked), whenever both halves of that
-  ratio exist for the selection. Everything below the selectors — six KPI
-  cards (Highest/Average/Total/Number of Posts/Best Performing Post/Lowest
-  Performing Post), the weekly trend chart, a Platform Comparison chart
-  (Campaign Performance instead, once a single platform is selected — since
-  comparing one platform to itself isn't useful), a Content Type
-  Performance chart, and the Top Performing Posts ranking (with a **View
-  Details** button opening the same full-record popup as Data Records) —
-  recomputes for the selected platform + metric + date range + campaign +
-  content type. Every bar, line, and pie chart shows its actual values
-  directly on the chart (via `chartjs-plugin-datalabels`), not just on
-  hover, formatted the way a presentation deck would (`850`, `1,250`,
-  `12.5K`, `156K`, `1.25M`) — point/bar labels are skipped only when a chart
-  has enough items that labeling every one would overlap, in which case the
-  hover tooltip still has the exact value.
+  a metric only appears once a real column for it has been imported.
+  Everything below the selectors — five KPI cards (Highest/Average/Total/
+  Number of Posts/Best Performing Post — the last one lists **every** post
+  tied for the top value, not just one, and there's no Lowest Performing
+  Post card), the weekly trend chart, a Platform Comparison chart (Campaign
+  Performance instead, once a single platform is selected — since comparing
+  one platform to itself isn't useful), a Content Type Performance chart,
+  and the Top Performing Posts ranking (every caption is a clickable link
+  straight to the original post when a posting link was imported for it,
+  opening in a new tab, alongside the **View Details** button which opens
+  the same full-record popup as Data Records) — recomputes for the selected
+  platform + metric + date range + campaign + content type. Every bar,
+  line, and pie chart shows its actual values directly on the chart (via
+  `chartjs-plugin-datalabels`), not just on hover, formatted the way a
+  presentation deck would (`850`, `1,250`, `12.5K`, `156K`, `1.25M`) —
+  point/bar labels are skipped only when a chart has enough items that
+  labeling every one would overlap, in which case the hover tooltip still
+  has the exact value.
 - **Data Records** — a CRM-style, platform-grouped browser instead of a
   giant spreadsheet-in-a-table. A platform-pill filter (**All Platforms**,
   Facebook, Instagram, TikTok, LinkedIn, Threads, YouTube) plus a search box
@@ -168,19 +169,51 @@ records never require a decision either; they're imported automatically too.
     ever stretched across every platform's metrics at once.
   - Every row has **View** (a read-only popup with every imported field,
     grouped into sections by platform), **Edit** (the same, but every field
-    editable), and **Delete**. Edit/View always load the complete source
-    row — not just the columns visible in the table. Saving an edit re-syncs
-    the underlying dashboard post + platform metrics in the same
-    transaction, so the table, Dashboard, Comparisons, and every report
-    reflect the change immediately; a **Status** badge flags whether a
-    record has been edited since import. Delete removes just that
-    platform's data when used from a platform-specific view (or the whole
-    record, across every platform, from All Platforms) — the original
-    import is always kept in Upload History's raw-row viewer regardless.
-- **Comparisons** — Week vs. Week, a fully custom date-range vs. date-range,
-  Monthly (vs. previous month or vs. the same month last year), Quarterly,
-  and Year-to-Date — each showing per-metric growth % and a platform-by
-  -platform comparison chart.
+    editable, opening in a modal pre-filled with the record's current
+    values and saving immediately on confirm), and **Delete**. Edit/View
+    always load the complete source row — not just the columns visible in
+    the table. Saving an edit re-syncs the underlying dashboard post +
+    platform metrics in the same transaction, so the table, Dashboard,
+    Comparisons, and every report reflect the change immediately; a
+    **Status** badge flags whether a record has been edited since import.
+    Delete removes just that platform's data when used from a
+    platform-specific view (or the whole record, across every platform,
+    from All Platforms) — the original import is always kept in Upload
+    History's raw-row viewer regardless.
+  - Every sortable column (Date, Platforms, Reach, Engagement, Impressions,
+    Followers, Clicks, Shares, Comments, Last Updated, and the other curated
+    metric columns) has clickable ↑/↓ sort arrows in its header; sorting is
+    instant since it re-orders whatever page of rows is already loaded, with
+    no round-trip to the server. The Date column always renders on a single
+    line (e.g. `Jul 20, 2026`), never wrapping onto a second line.
+- **Followers Data Record** — a separate tab for manually logging each
+  platform's total follower count once a week (Platform, Week/Date,
+  Followers Count), entirely independent of the spreadsheet Upload system —
+  it has its own database table, its own API, and doesn't touch or require
+  any uploaded post data. Re-entering the same platform + week updates that
+  entry in place rather than creating a duplicate. This is what powers
+  follower-growth figures on the Comparisons page; upload data alone never
+  produces a follower-growth number since per-post "Followers Gained" and a
+  platform's actual running total are different things.
+- **Comparisons** — two views:
+  - **All Platforms** (the default view) — a single report covering every
+    platform that has any data (uploaded posts and/or Followers Data Record
+    entries), with no date range required: platform ranking (by a composite
+    of reach/engagement/impressions), a Best- and Lowest-Performing Platform
+    callout, a metric-comparison bar chart (switchable between any of the
+    ten canonical metrics), a follower-growth chart and column sourced from
+    Followers Data Record, and an auto-generated Insights & Summary list
+    (a rule-based narrative over the computed numbers — not an external AI
+    call). An optional From/To range narrows it and unlocks
+    vs-previous-equivalent-period growth percentages per platform; without
+    one it simply reports on the full span of data on file. This view
+    deliberately ignores the shared Platform/Campaign/Content-type filter
+    bar, since the whole point is to compare across everything at once.
+  - The original tools remain unchanged: **Week vs. Week**, a fully custom
+    date-range vs. date-range, **Monthly** (vs. previous month or vs. the
+    same month last year), **Quarterly**, and **Year-to-Date** — each
+    showing per-metric growth % and a platform-by-platform comparison
+    chart, still respecting the shared filter bar as before.
 - **Upload History** — every past import with its status, row counts, any
   note left at import time, and a per-row error/skip log you can expand.
 
@@ -314,17 +347,13 @@ throttling, `Secure`/HTTPS-only cookies), ask and it can be added.
 
 - The Dashboard's metric list is limited to what the app actually stores per
   post (Views, Reach, Impressions, Engagement, Clicks, Followers Gained,
-  Watch Time, Shares, Comments, Saves, plus the derived Engagement Rate).
-  Metrics some platforms' native analytics exports offer but this project's
-  source sheet doesn't break out — e.g. Facebook Reactions as distinct from
-  Engagement, CTR, TikTok Completion Rate, Instagram Accounts
-  Reached/Engaged or Profile Visits, Threads Replies/Reposts/Quotes — aren't
-  available and won't appear in the Metric dropdown until a future upload
-  actually contains that column (see `METRIC_SYNONYMS` in `app.js` to teach
-  the parser a new one). There's also no
-  cumulative "Followers Growth over time" chart yet — that needs the
-  separate weekly-follower-count tracking described as a future phase, not
-  the per-post "Followers Gained" metric this dashboard already charts.
+  Watch Time, Shares, Comments, Saves). Metrics some platforms' native
+  analytics exports offer but this project's source sheet doesn't break
+  out — e.g. Facebook Reactions as distinct from Engagement, CTR, TikTok
+  Completion Rate, Instagram Accounts Reached/Engaged or Profile Visits,
+  Threads Replies/Reposts/Quotes — aren't available and won't appear in the
+  Metric dropdown until a future upload actually contains that column (see
+  `METRIC_SYNONYMS` in `app.js` to teach the parser a new one).
 - The uploaded file is fully re-parsed on both the preview step and the
   commit step (not cached in the database between the two). For the sheet
   sizes this is built for (weekly exports), this is not noticeable, but a
