@@ -737,8 +737,12 @@ function emptyMetricBag() {
   };
 }
 
+// A posting link alone counts as data: it's real evidence the post exists on
+// that platform even on weeks the platform's own analytics come back blank
+// (e.g. a sheet cell reading "Analytics unavailable"), so the post still
+// gets attributed there instead of showing no platform at all.
 function metricBagHasData(bag) {
-  return Object.entries(bag).some(([k, v]) => k !== 'posting_link' && v !== null && v !== undefined);
+  return Object.values(bag).some((v) => v !== null && v !== undefined);
 }
 
 // Fixed key order (matches emptyMetricBag()) so the fingerprint below is stable
