@@ -231,7 +231,8 @@ records never require a decision either; they're imported automatically too.
     per-metric growth % stat-tile grid, respecting the shared filter bar as
     before. Below that grid, a **Platform Performance Comparison** section
     renders one card per platform with data in either range (including
-    **X**, alongside Facebook/Instagram/TikTok/LinkedIn/Threads/YouTube):
+    **X** and **FB Group**, alongside Facebook/Instagram/TikTok/LinkedIn/
+    Threads/YouTube):
     an overall % change badge (green/red/gray), a metric-by-metric list
     (Posts/Views/Reach/Impressions/Engagement/Clicks/Comments/Shares/
     Saves/Watch Time/Followers Gained — metrics that are zero in both

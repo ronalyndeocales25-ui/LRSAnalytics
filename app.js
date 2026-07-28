@@ -183,6 +183,7 @@ const PLATFORMS = [
   { id: 'threads', label: 'Threads', color: '#1baf7a', darkColor: '#199e70', groupAliases: ['threads'] },
   { id: 'youtube', label: 'YouTube', color: '#eb6834', darkColor: '#d95926', groupAliases: ['youtube', 'yt'] },
   { id: 'x', label: 'X', color: '#4a3aa7', darkColor: '#9085e9', groupAliases: ['x', 'twitter', 'x twitter', 'x (twitter)'] },
+  { id: 'fb_group', label: 'FB Group', color: '#e34948', darkColor: '#e66767', groupAliases: ['fb group', 'facebook group', 'fbgroup', 'fb groups'] },
 ];
 
 const PLATFORM_IDS = PLATFORMS.map((p) => p.id);
@@ -295,6 +296,12 @@ const PLATFORM_RECORD_COLUMNS = {
     { key: 'impressions', label: 'Impressions' },
     { key: 'engagement', label: 'Engagements' },
     { key: 'clicks', label: 'Clicks' },
+    { key: 'posting_link', label: 'Link' },
+  ],
+  fb_group: [
+    { key: 'views', label: 'Views' },
+    { key: 'reach', label: 'Reach' },
+    { key: 'engagement', label: 'Engagement' },
     { key: 'posting_link', label: 'Link' },
   ],
 };
