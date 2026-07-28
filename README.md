@@ -98,28 +98,38 @@ top of `app.js`. That means:
   `METRIC_SYNONYMS` — the database, API, and dashboard already support all
   ten canonical metrics end to end.
 
-**FB Group is a special case of the above**: it's a real platform in every
-part of the app (filters, Dashboard, Comparisons, exports, ...), but the
-source sheet has no dedicated "FB GROUP" column block — Facebook Group
-posts are logged under the same FACEBOOK columns as regular Facebook posts.
-`splitFacebookGroupPlatformBags()` in `app.js` reads each row's free-text
-"Platforms" identifier (the column labeled "Platforms" in the sheet, not
-the group-header row) to decide where that row's Facebook-column numbers
-actually belong:
+**FB Group is a real platform in every part of the app** (filters,
+Dashboard, Comparisons, exports, ...), and the source sheet can provide its
+data either of two ways — both work, and can even be mixed row by row in
+the same file:
 
-- `Platforms` says "Facebook" → counted under Facebook only (unchanged
-  from before FB Group existed — a row that never mentions FB Group is
-  completely unaffected).
-- `Platforms` says "FB Group" → counted under FB Group only.
-- `Platforms` says "Facebook, FB Group" (either order) → counted under
-  **both**, reusing the same Views/Reach/Engagement/etc. values for each
-  rather than requiring the numbers to be entered twice. A post that
-  mentions FB Group but has no numbers in the Facebook columns still has
-  nothing to show under FB Group either — there's nothing to attribute.
+1. **A dedicated "FB GROUP" column block**, exactly like every other
+   platform (its own Views/Reach/Engagement-or-Reactions/Comments/Shares/
+   Posting link columns under an "FB GROUP" group-header cell) — this needs
+   no special handling at all, it's parsed the same generic, positional way
+   FACEBOOK/INSTAGRAM/etc. always have been. (Its curated columns in the
+   Data Records table are Reactions/Comments/Shares/Link rather than
+   Facebook's own Views/Reach/Engagement/Link, since the reference sheet's
+   FB GROUP block reports different fields — see `PLATFORM_RECORD_COLUMNS`
+   in `app.js`. "Reactions" and singular "Share" are recognized synonyms
+   for `engagement`/`shares` in `METRIC_SYNONYMS`.)
+2. **No dedicated block at all** — Facebook Group posts logged under the
+   same FACEBOOK columns as regular Facebook posts, distinguished only by
+   each row's free-text "Platforms" identifier (the column labeled
+   "Platforms", not the group-header row). `splitFacebookGroupPlatformBags()`
+   in `app.js` reads that text to decide where the Facebook block's numbers
+   belong: "Facebook" → Facebook only (a row that never mentions FB Group
+   is completely unaffected — this is unchanged from before FB Group
+   existed); "FB Group" → FB Group only; "Facebook, FB Group" (either
+   order) → **both**, reusing the same values for each rather than
+   requiring them entered twice. This fallback only ever fires when there's
+   no real FB GROUP block data for that row already — a row with a real,
+   populated FB GROUP block is always authoritative and is never
+   overwritten with a copy of Facebook's numbers.
 
-This same function is shared by both bulk import and by re-saving an edited
-record on the Data Records page, so editing a row's Platforms value there
-re-runs the same split.
+Both paths are shared by bulk import and by re-saving an edited record on
+the Data Records page, so editing a row's Platforms value there re-runs the
+same logic.
 
 ### Deduplication & conflict resolution
 

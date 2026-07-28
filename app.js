@@ -216,6 +216,7 @@ const METRIC_SYNONYMS = {
   'engagement': 'engagement',
   'engagements': 'engagement',
   'interactions': 'engagement',
+  'reactions': 'engagement', // FB Group's own block reports "Reactions" rather than "Engagement"
   'clicks': 'clicks',
   'followers gained': 'followers_gained',
   'subscribers': 'followers_gained',
@@ -226,6 +227,7 @@ const METRIC_SYNONYMS = {
   'watch time': 'watch_time_raw',
   'duration': 'duration', // video length, informational only
   'shares': 'shares',
+  'share': 'shares', // singular variant seen in FB Group's own block
   'comments': 'comments',
   'saves': 'saves',
   'posting link': 'posting_link',
@@ -299,9 +301,9 @@ const PLATFORM_RECORD_COLUMNS = {
     { key: 'posting_link', label: 'Link' },
   ],
   fb_group: [
-    { key: 'views', label: 'Views' },
-    { key: 'reach', label: 'Reach' },
-    { key: 'engagement', label: 'Engagement' },
+    { key: 'engagement', label: 'Reactions' },
+    { key: 'comments', label: 'Comments' },
+    { key: 'shares', label: 'Shares' },
     { key: 'posting_link', label: 'Link' },
   ],
 };
@@ -787,6 +789,13 @@ function buildFullHash(identityHash, campaignType, platforms) {
 function splitFacebookGroupPlatformBags(platformBags, platformsRaw) {
   const bag = platformBags.facebook;
   if (!bag || !metricBagHasData(bag)) return;
+
+  // If the sheet also has its own dedicated FB GROUP column block with real
+  // data for this row (not every sheet does — some only have a FACEBOOK
+  // block and rely entirely on the Platforms text, which is what the rest
+  // of this function handles), that block's own numbers are authoritative
+  // and must never be overwritten with a copy of Facebook's.
+  if (platformBags.fb_group && metricBagHasData(platformBags.fb_group)) return;
 
   const tokens = String(platformsRaw || '').split(',').map((s) => s.trim()).filter(Boolean);
   let mentionsFacebook = false;
