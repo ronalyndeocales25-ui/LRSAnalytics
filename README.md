@@ -98,6 +98,29 @@ top of `app.js`. That means:
   `METRIC_SYNONYMS` — the database, API, and dashboard already support all
   ten canonical metrics end to end.
 
+**FB Group is a special case of the above**: it's a real platform in every
+part of the app (filters, Dashboard, Comparisons, exports, ...), but the
+source sheet has no dedicated "FB GROUP" column block — Facebook Group
+posts are logged under the same FACEBOOK columns as regular Facebook posts.
+`splitFacebookGroupPlatformBags()` in `app.js` reads each row's free-text
+"Platforms" identifier (the column labeled "Platforms" in the sheet, not
+the group-header row) to decide where that row's Facebook-column numbers
+actually belong:
+
+- `Platforms` says "Facebook" → counted under Facebook only (unchanged
+  from before FB Group existed — a row that never mentions FB Group is
+  completely unaffected).
+- `Platforms` says "FB Group" → counted under FB Group only.
+- `Platforms` says "Facebook, FB Group" (either order) → counted under
+  **both**, reusing the same Views/Reach/Engagement/etc. values for each
+  rather than requiring the numbers to be entered twice. A post that
+  mentions FB Group but has no numbers in the Facebook columns still has
+  nothing to show under FB Group either — there's nothing to attribute.
+
+This same function is shared by both bulk import and by re-saving an edited
+record on the Data Records page, so editing a row's Platforms value there
+re-runs the same split.
+
 ### Deduplication & conflict resolution
 
 Each source row gets a fingerprint of **every** imported field — not just

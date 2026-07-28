@@ -773,6 +773,42 @@ function buildFullHash(identityHash, campaignType, platforms) {
 }
 
 /**
+ * Facebook and FB Group deliberately share one spreadsheet column block —
+ * the source sheet only has a "FACEBOOK" header, never a separate "FB
+ * GROUP" one, and per the business rule that stays true even after adding
+ * FB Group as its own platform. Instead, each row's free-text "Platforms"
+ * identifier decides which of the two the Facebook block's numbers belong
+ * to: "Facebook" alone -> facebook only (the pre-existing default, so any
+ * row that doesn't mention FB Group is completely unaffected), "FB Group"
+ * alone -> fb_group only, both mentioned together (either order) -> both,
+ * reusing the exact same metric values for each rather than asking for a
+ * second set of columns. Every other platform's column block is untouched.
+ */
+function splitFacebookGroupPlatformBags(platformBags, platformsRaw) {
+  const bag = platformBags.facebook;
+  if (!bag || !metricBagHasData(bag)) return;
+
+  const tokens = String(platformsRaw || '').split(',').map((s) => s.trim()).filter(Boolean);
+  let mentionsFacebook = false;
+  let mentionsGroup = false;
+  tokens.forEach((token) => {
+    const match = findPlatformByGroupLabel(token);
+    if (!match) return;
+    if (match.id === 'facebook') mentionsFacebook = true;
+    if (match.id === 'fb_group') mentionsGroup = true;
+  });
+
+  if (mentionsGroup && mentionsFacebook) {
+    platformBags.fb_group = { ...bag };
+  } else if (mentionsGroup && !mentionsFacebook) {
+    platformBags.fb_group = bag;
+    delete platformBags.facebook;
+  }
+  // Facebook mentioned alone, or neither explicitly recognized in the
+  // Platforms text — leaves the bag under 'facebook' (today's behavior).
+}
+
+/**
  * Parses a single agenda-format row against a column plan. Returns
  * `{ post, error }` where exactly one is non-null, or both null for a row
  * with no identifiers and no platform data (treated as blank). This is the
@@ -800,6 +836,8 @@ function parseOneAgendaRow(row, plan, rowNumber) {
       }
     }
   });
+
+  splitFacebookGroupPlatformBags(platformBags, identifiers.platforms_raw);
 
   const hasAnyPlatformData = Object.values(platformBags).some(metricBagHasData);
   const hasAnyIdentifier = Object.keys(identifiers).length > 0;
