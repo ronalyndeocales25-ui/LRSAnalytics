@@ -1951,32 +1951,43 @@ function deletePlatformFromPost(postId, platform) {
 /* ------------------------------------------------------------
    Duplicate cleanup
 
-   Re-uploading a weekly sheet whose numbers have moved since the
-   last import produces a brand-new record per changed row — by
-   design, the full-record fingerprint (see buildFullHash) only
-   treats a row as a byte-for-byte duplicate when EVERY metric
-   also matches, so a week-over-week analytics update is never
-   silently dropped. The side effect is that Data Records then
-   shows the same post twice (same publish date + caption), an
-   older copy and the just-uploaded one.
+   Re-uploading a weekly sheet whose numbers have moved imports
+   each changed row as a brand-new record (the full-record
+   fingerprint only skips a row when every metric is identical
+   too), so Data Records ends up showing the same post more than
+   once. This finds those groups and, on confirm, keeps the most
+   recently imported copy and deletes the rest. Deletion reuses
+   deletePostStmt, so raw_rows are retained (detached) exactly
+   like deletePost() and every original import stays recoverable
+   from Upload History.
 
-   This collapses each such group to a single record, keeping the
-   most recently imported copy (latest created_at, tie-broken by
-   highest id) and deleting the older ones. Deletion reuses
-   deletePostStmt, so raw_rows are retained — just detached
-   (post_id -> NULL) — exactly like deletePost(); every original
-   import stays recoverable from Upload History.
-
-   Two records are "the same post" only when publish date, trimmed
-   caption, AND the exact set of platforms all match — so a reel
-   logged across TikTok/Facebook/Instagram and a separate same-day
-   LinkedIn post that reuses the caption stay as two records. On
-   top of that, an older copy is only removed when it came from a
-   different upload than the copy being kept: that is the
-   signature of a re-import, whereas two same-key rows inside one
-   file are left untouched. Records with a blank caption are
-   skipped (nothing safe to key them on).
+   Two records are treated as the same post when they share a
+   publish date and a normalized caption (captionKey below):
+   Unicode NFKC folding so styled/"fancy" letters match plain
+   ones, curly quotes/dashes/ellipsis folded to ASCII, zero-width
+   and emoji-variation marks stripped, and all whitespace
+   collapsed -- so an edited row whose newlines or smart quotes
+   shifted still matches its original, while ordinary punctuation
+   and emoji are kept so genuinely different same-day captions do
+   not collide. An older copy is only deleted when it came from a
+   different upload than the survivor AND the survivor already
+   covers all of its platforms, so neither an in-file sibling nor
+   a row with unique platform data is ever dropped. Blank captions
+   are skipped.
    ------------------------------------------------------------ */
+function captionKey(s) {
+  return (s || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u200B-\u200D\u2060\uFEFF\uFE0E\uFE0F]/g, '') // zero-width chars + emoji variation selectors
+    .replace(/[\u2018\u2019\u02BC\u2032`\u00B4]/g, "'") // apostrophe variants
+    .replace(/[\u201C\u201D\u2033]/g, '"')                   // double-quote variants
+    .replace(/[\u2013\u2014\u2015]/g, '-')                   // en/em dashes
+    .replace(/\u2026/g, '...')                               // ellipsis
+    .replace(/\s+/g, ' ')                                    // collapse newlines / runs of spaces
+    .trim();
+}
+
 function findDuplicateRecordGroups() {
   const rows = db
     .prepare(`
@@ -1990,10 +2001,9 @@ function findDuplicateRecordGroups() {
 
   const groups = new Map();
   for (const r of rows) {
-    const caption = (r.caption || '').trim();
-    if (!caption) continue;
-    // Same post only if publish date + caption + exact platform set all match.
-    const key = [r.publish_date, caption.toLowerCase(), r.platform_ids || ''].join(' | ');
+    const ck = captionKey(r.caption);
+    if (!ck) continue;
+    const key = r.publish_date + ' | ' + ck;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(r);
   }
@@ -2013,9 +2023,17 @@ function findDuplicateRecordGroups() {
       a.created_at === b.created_at ? b.post_id - a.post_id : (a.created_at < b.created_at ? 1 : -1)
     );
     const keep = members[0];
-    // Only drop older copies from a different upload than the kept one -
-    // same-upload siblings are genuine distinct rows, not re-imports.
-    const remove = members.slice(1).filter((m) => m.upload_id !== keep.upload_id);
+    const keepSet = new Set(keep.platform_ids ? keep.platform_ids.split(',') : []);
+    // Drop an older copy only when BOTH hold:
+    //  - it came from a different upload than the survivor (the signature of a
+    //    re-import; two same-key rows inside one imported file are left alone),
+    //  - the survivor already covers all of its platforms, so the cleanup never
+    //    loses a platform's worth of data.
+    const remove = members.slice(1).filter((m) => {
+      if (m.upload_id === keep.upload_id) return false;
+      const mSet = m.platform_ids ? m.platform_ids.split(',') : [];
+      return mSet.every((pf) => keepSet.has(pf));
+    });
     if (!remove.length) continue;
     out.push({
       publishDate: keep.publish_date,
